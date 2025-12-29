@@ -25,19 +25,23 @@ def paginate_queryset(request, queryset, per_page=10):
     return paginator.get_page(page_number)
 
 
-def index(request):
-    posts = (
-        Post.objects
-        .select_related('author', 'category', 'location')
-        .filter(
-            is_published=True,
-            pub_date__lte=timezone.now(),
-            category__is_published=True,
-        )
-        .annotate(comment_count=Count('comments'))
-        .order_by('-pub_date')
+def annotate_comment_count(queryset):
+    return queryset.annotate(comment_count=Count('comments'))
+
+
+def filter_published(queryset):
+    now = timezone.now()
+    return queryset.filter(
+        is_published=True,
+        pub_date__lte=now,
+        category__is_published=True,
     )
 
+
+def index(request):
+    posts = Post.objects.select_related('author', 'category', 'location')
+    posts = filter_published(posts)
+    posts = annotate_comment_count(posts).order_by('-pub_date')
     page_obj = paginate_queryset(request, posts)
     return render(request, 'blog/index.html', {'page_obj': page_obj})
 
@@ -46,50 +50,37 @@ def category_posts(request, category_slug):
     category = get_object_or_404(
         Category,
         slug=category_slug,
-        is_published=True,
+        is_published=True
     )
 
-    posts = (
-        Post.objects
-        .select_related('author', 'category', 'location')
-        .prefetch_related('comments')
-        .filter(
-            category=category,
-            is_published=True,
-            pub_date__lte=timezone.now(),
-        )
-        .order_by('-pub_date')
-    )
+    posts = Post.objects.select_related('author', 'category', 'location')
+    posts = posts.filter(category=category)
+    posts = filter_published(posts)
+    posts = annotate_comment_count(posts).order_by('-pub_date')
 
     page_obj = paginate_queryset(request, posts)
-
     return render(
         request,
         'blog/category.html',
         {
             'category': category,
             'page_obj': page_obj,
-        },
+        }
     )
 
 
 def post_detail(request, post_id):
     post = get_object_or_404(
-        Post.objects
-        .select_related('author', 'category', 'location')
-        .prefetch_related('comments__author'),
-        id=post_id,
+        Post.objects.select_related('author', 'category', 'location')
+                    .prefetch_related('comments__author'),
+        id=post_id
     )
 
     if not post.is_published or post.pub_date > timezone.now():
         if request.user != post.author:
             raise Http404
 
-    comments = (
-        post.comments
-        .select_related('author')
-        .order_by('created_at')
-    )
+    comments = post.comments.all().order_by('created_at')
     form = CommentForm()
 
     return render(
@@ -99,7 +90,7 @@ def post_detail(request, post_id):
             'post': post,
             'comments': comments,
             'form': form,
-        },
+        }
     )
 
 
@@ -126,11 +117,7 @@ def edit_post(request, post_id):
         return redirect('blog:post_detail', post_id)
 
     if request.method == 'POST':
-        form = PostForm(
-            request.POST,
-            request.FILES,
-            instance=post,
-        )
+        form = PostForm(request.POST, request.FILES, instance=post)
         if form.is_valid():
             form.save()
             return redirect('blog:post_detail', post_id)
@@ -151,12 +138,12 @@ def delete_post(request, post_id):
         post.delete()
         return redirect('blog:profile', request.user.username)
 
+    form = PostForm(instance=post)
     return render(
         request,
-        'blog/confirm_delete.html',
+        'blog/create.html',
         {
-            'object': post,
-            'type': 'post',
+            'form': form,
         },
     )
 
@@ -267,19 +254,9 @@ def profile(request, username):
     if request.user.is_authenticated and request.user == profile_user:
         posts = Post.objects.filter(author=profile_user)
     else:
-        posts = Post.objects.filter(
-            author=profile_user,
-            is_published=True,
-            pub_date__lte=timezone.now(),
-            category__is_published=True,
-        )
+        posts = filter_published(Post.objects.filter(author=profile_user))
 
-    posts = (
-        posts
-        .annotate(comment_count=Count('comments'))
-        .order_by('-pub_date')
-    )
-
+    posts = annotate_comment_count(posts).order_by('-pub_date')
     page_obj = paginate_queryset(request, posts)
 
     return render(
@@ -288,7 +265,7 @@ def profile(request, username):
         {
             'profile': profile_user,
             'page_obj': page_obj,
-        },
+        }
     )
 
 

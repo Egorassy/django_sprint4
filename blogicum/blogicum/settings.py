@@ -23,7 +23,7 @@ BASE_DIR = Path(__file__).resolve().parent.parent
 SECRET_KEY = 'django-insecure-!r1pr&4fy^%xw$klkq8f#zr6^wmj1-wnjez=x#uw547ifu7%-9'
 
 # SECURITY WARNING: don't run with debug turned on in production!
-DEBUG = False
+DEBUG = True
 
 ALLOWED_HOSTS = ['127.0.0.1', 'localhost']
 
@@ -91,8 +91,6 @@ TEMPLATES_DIR = BASE_DIR / "templates"
 LOGIN_URL = '/auth/login/'
 LOGIN_REDIRECT_URL = '/'
 STATIC_ROOT = BASE_DIR / 'staticfiles'
-TIME_ZONE = 'Europe/Saratov'
-USE_TZ = True
 
 # Password validation
 # https://docs.djangoproject.com/en/3.2/ref/settings/#auth-password-validators
@@ -118,7 +116,7 @@ AUTH_PASSWORD_VALIDATORS = [
 
 LANGUAGE_CODE = 'ru-RU'
 
-TIME_ZONE = 'UTC'
+TIME_ZONE = 'Europe/Saratov'
 
 USE_I18N = True
 

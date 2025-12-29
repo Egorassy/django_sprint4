@@ -9,10 +9,7 @@ User = get_user_model()
 class PostForm(forms.ModelForm):
     class Meta:
         model = Post
-        fields = (
-            'title', 'text', 'image', 'pub_date', 'is_published',
-            'location', 'category'
-        )
+        exclude = ['author']
         widgets = {
             'pub_date': forms.DateTimeInput(attrs={'type': 'datetime-local'}),
         }
